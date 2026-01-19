@@ -16,26 +16,21 @@ You should have received a copy of the GNU General Public License along
 with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
-#include <obs-module.h>
-#include <plugin-support.h>
-#include "tbar-web.h"
+#pragma once
 
-#ifdef ENABLE_FRONTEND_API
-#include <obs-frontend-api.h>
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
+bool tbar_web_start(int port);
+void tbar_web_stop(void);
 
-bool obs_module_load(void)
-{
-	obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
-	tbar_web_apply_config();
-	return true;
-}
+/* Loads config (enabled/port) from module config path and (re)starts server accordingly */
+void tbar_web_apply_config(void);
 
-void obs_module_unload(void)
-{
-	tbar_web_stop();
-	obs_log(LOG_INFO, "plugin unloaded");
+#ifdef __cplusplus
 }
+#endif
+

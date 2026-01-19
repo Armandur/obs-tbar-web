@@ -1,12 +1,12 @@
-# OBS Plugin Template
+# OBS T-bar Web
 
-## Introduction
+This project is an OBS plugin that exposes a small local web server to test and control OBS “T‑bar” / manual transitions in Studio Mode.
 
-The plugin template is meant to be used as a starting point for OBS Studio plugin development. It includes:
+It includes:
 
-* Boilerplate plugin source code
-* A CMake project file
-* GitHub Actions workflows and repository actions
+- A **web UI** on `/` with a slider to drive transition progress
+- A small **HTTP API** (`/tbar`, `/config`)
+- Handling for both **Fade** (manual progress) and **Cut** (instant/fixed)
 
 ## Supported Build Environments
 
@@ -21,8 +21,120 @@ The plugin template is meant to be used as a starting point for OBS Studio plugi
 | Ubuntu 24.04 | `build-essential` |
 
 ## Quick Start
+### Build (Windows / Cursor CMake Tools)
 
-An absolute bare-bones [Quick Start Guide](https://github.com/obsproject/obs-plugintemplate/wiki/Quick-Start-Guide) is available in the wiki.
+- Make sure `ENABLE_FRONTEND_API=true` in your CMake configuration (required for Studio Mode functionality).
+- Build normally in Cursor with CMake Tools (Configure + Build).
+
+After the build you’ll find the plugin binaries here (example):
+
+- `build_x64\RelWithDebInfo\obs-tbar-web.dll`
+- `build_x64\rundir\RelWithDebInfo\obs-tbar-web.dll`
+
+If you build from the command line, the target name is `obs-tbar-web`:
+
+```bash
+cmake --build build_x64 --config RelWithDebInfo --target obs-tbar-web
+```
+
+### Install into OBS
+
+Option A (recommended): install via CMake:
+
+```bash
+cmake --install build_x64 --config RelWithDebInfo
+```
+
+Option B: manually copy the `.dll` to the OBS plugin folder (64bit).
+
+### Run and test
+
+1) Start OBS and enable **Studio Mode**.
+2) Open the web UI in a browser:
+
+- `http://127.0.0.1:<port>/`
+
+Default port is **4455** unless you changed the config.
+
+## API
+
+### `GET /` (web-UI)
+
+A test page with:
+
+- Slider for manual progress (0..1023)
+- “Save” for server settings (`enabled`, `port`)
+
+### `GET /tbar`
+
+Returns the last position (cached) in normalized form (0..1):
+
+```json
+{"position":0.5,"source":"cached"}
+```
+
+### `POST /tbar`
+
+Send:
+
+```json
+{"position":0.5}
+```
+
+Optional (commit):
+
+```json
+{"position":1.0,"release":true}
+```
+
+**Behavior per transition:**
+
+- **Fade / manual-capable transitions**: we start a manual transition towards the preview scene and drive progress using `manual_time`. On `release:true` near 1.0 we do a **program/preview swap** so Studio Mode behaves as expected.
+- **Cut (fixed)**: there is no meaningful “in-between” position. We trigger a real transition on `release:true` near 1.0.
+
+### `GET /config`
+
+Returns:
+
+```json
+{"enabled":true,"port":4455}
+```
+
+### `POST /config`
+
+Update the server settings:
+
+```json
+{"enabled":true,"port":4455}
+```
+
+Note: setting `enabled=false` disables the web server. Re-enable by editing the config file and restarting OBS.
+
+### `GET /status`
+
+Returns a small health/status payload:
+
+```json
+{"ok":true,"enabled":true,"port":4455,"manual_active":false,"last_position":0.0}
+```
+
+## Configuration
+
+The plugin reads/writes a JSON file named:
+
+- `obs-tbar-web.json`
+
+It’s stored in the OBS “module config path” (the plugin’s config folder).
+
+## Troubleshooting
+
+- **Nothing happens when dragging**: verify Studio Mode is enabled and Preview ≠ Program.
+- **Cut is “instant”**: expected; commit happens on `release:true` near max.
+- **Port changes**: if you change the port in the web UI, open `http://127.0.0.1:<newport>/`.
+
+## Future work
+
+Gamepad/axis control is implemented in a separate project (client app). This plugin keeps the HTTP control surface and OBS-side transition handling.
 
 ## Documentation
 

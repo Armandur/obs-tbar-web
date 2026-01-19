@@ -18,7 +18,15 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CM
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${PLUGIN_EMAIL}")
+set(_cpack_maintainer "${PLUGIN_EMAIL}")
+if(NOT _cpack_maintainer)
+  set(_cpack_maintainer "${PLUGIN_AUTHOR}")
+endif()
+if(NOT _cpack_maintainer)
+  set(_cpack_maintainer "unknown")
+endif()
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${_cpack_maintainer}")
+set(CPACK_PACKAGE_CONTACT "${_cpack_maintainer}")
 set(CPACK_SET_DESTDIR ON)
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25.0 OR NOT CMAKE_CROSSCOMPILING)

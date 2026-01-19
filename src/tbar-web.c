@@ -39,7 +39,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#ifndef _WIN32
+#if !defined(_WIN32) && defined(ENABLE_FRONTEND_API)
 #include <sys/time.h>
 #include <time.h>
 #endif
@@ -48,6 +48,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define TBAR_MAX 1023
 #define TBAR_CLAMP 10
 
+#ifdef ENABLE_FRONTEND_API
 /* Millisecond tick counter used for debounce (portable). */
 static uint64_t g_last_release_tick = 0;
 static bool g_manual_active = false;
@@ -84,6 +85,7 @@ static void manual_clear_state(void)
 	}
 	g_manual_active = false;
 }
+#endif /* ENABLE_FRONTEND_API */
 
 /* ------------------------------ */
 /* Minimal HTTP server (Windows)  */
@@ -311,7 +313,9 @@ static void set_pos_task(void *param)
 		t = 0.0;
 	if (t > 1.0)
 		t = 1.0;
+#ifdef _WIN32
 	g_srv.last_position = t;
+#endif
 
 	/* Only meaningful in Studio Mode */
 	if (!obs_frontend_preview_program_mode_active()) {
@@ -387,7 +391,9 @@ static void set_pos_task(void *param)
 				/* Cut/etc: do an actual program transition via frontend */
 				obs_frontend_preview_program_trigger_transition();
 				obs_log(LOG_INFO, "tbar-web: fixed transition trigger");
+#ifdef _WIN32
 				g_srv.last_position = 0.0;
+#endif
 				manual_clear_state();
 			} else if (g_manual_active && t >= t_finish) {
 				obs_transition_set_manual_time(transition, 1.0f);
@@ -397,13 +403,17 @@ static void set_pos_task(void *param)
 					obs_frontend_set_current_preview_scene(g_manual_program);
 				}
 				obs_log(LOG_INFO, "tbar-web: manual transition finish+swap");
+#ifdef _WIN32
 				g_srv.last_position = 0.0;
+#endif
 				manual_clear_state();
 			} else if (g_manual_active && t <= t_cancel) {
 				obs_transition_set_manual_time(transition, 0.0f);
 				obs_transition_force_stop(transition);
 				obs_log(LOG_INFO, "tbar-web: manual transition cancel");
+#ifdef _WIN32
 				g_srv.last_position = 0.0;
+#endif
 				manual_clear_state();
 			}
 		}
@@ -719,11 +729,14 @@ static void handle_request(SOCKET s, const char *req, const char *body, int body
 
 	if (strcmp(path, "/status") == 0) {
 		if (strcmp(method, "GET") == 0) {
+			const char *manual_active_str = "false";
+#ifdef ENABLE_FRONTEND_API
+			manual_active_str = g_manual_active ? "true" : "false";
+#endif
 			char resp[256];
 			snprintf(resp, sizeof(resp),
 				 "{\"ok\":true,\"enabled\":%s,\"port\":%d,\"manual_active\":%s,\"last_position\":%.6f}",
-				 g_cfg.enabled ? "true" : "false", g_cfg.port, g_manual_active ? "true" : "false",
-				 g_srv.last_position);
+				 g_cfg.enabled ? "true" : "false", g_cfg.port, manual_active_str, g_srv.last_position);
 			http_send(s, 200, "OK", "application/json; charset=utf-8", resp);
 			return;
 		}

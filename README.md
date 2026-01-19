@@ -8,6 +8,11 @@ It includes:
 - A small **HTTP API** (`/tbar`, `/config`)
 - Handling for both **Fade** (manual progress) and **Cut** (instant/fixed)
 
+## Platform support (important)
+
+- **Windows**: ✅ Web server + API + web UI are implemented and supported.
+- **macOS / Linux**: ⚠️ The plugin currently **builds**, but the embedded HTTP server is **not implemented yet** (it logs a warning and does not start). These builds exist mainly to keep CI green and to make it easier to add cross-platform support later.
+
 ## Supported Build Environments
 
 | Platform  | Tool   |

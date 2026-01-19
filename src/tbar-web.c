@@ -39,16 +39,12 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#if !defined(_WIN32) && defined(ENABLE_FRONTEND_API)
-#include <sys/time.h>
-#include <time.h>
-#endif
 
 /* OBS frontend T-bar range is integer 0..1023 */
 #define TBAR_MAX 1023
 #define TBAR_CLAMP 10
 
-#ifdef ENABLE_FRONTEND_API
+#if defined(_WIN32) && defined(ENABLE_FRONTEND_API)
 /* Millisecond tick counter used for debounce (portable). */
 static uint64_t g_last_release_tick = 0;
 static bool g_manual_active = false;
@@ -58,19 +54,7 @@ static obs_source_t *g_manual_preview = NULL;
 
 static uint64_t get_tick64_ms(void)
 {
-#ifdef _WIN32
 	return (uint64_t)GetTickCount64();
-#else
-#if defined(CLOCK_MONOTONIC)
-	struct timespec ts;
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-		return (uint64_t)ts.tv_sec * 1000ull + (uint64_t)ts.tv_nsec / 1000000ull;
-	}
-#endif
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return (uint64_t)tv.tv_sec * 1000ull + (uint64_t)tv.tv_usec / 1000ull;
-#endif
 }
 
 static void manual_clear_state(void)
@@ -85,7 +69,7 @@ static void manual_clear_state(void)
 	}
 	g_manual_active = false;
 }
-#endif /* ENABLE_FRONTEND_API */
+#endif /* defined(_WIN32) && defined(ENABLE_FRONTEND_API) */
 
 /* ------------------------------ */
 /* Minimal HTTP server (Windows)  */

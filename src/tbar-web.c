@@ -39,16 +39,38 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef _WIN32
+#include <sys/time.h>
+#include <time.h>
+#endif
 
 /* OBS frontend T-bar range is integer 0..1023 */
 #define TBAR_MAX 1023
 #define TBAR_CLAMP 10
 
-static ULONGLONG g_last_release_tick = 0;
+/* Millisecond tick counter used for debounce (portable). */
+static uint64_t g_last_release_tick = 0;
 static bool g_manual_active = false;
-static ULONGLONG g_last_start_tick = 0;
+static uint64_t g_last_start_tick = 0;
 static obs_source_t *g_manual_program = NULL;
 static obs_source_t *g_manual_preview = NULL;
+
+static uint64_t get_tick64_ms(void)
+{
+#ifdef _WIN32
+	return (uint64_t)GetTickCount64();
+#else
+#if defined(CLOCK_MONOTONIC)
+	struct timespec ts;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+		return (uint64_t)ts.tv_sec * 1000ull + (uint64_t)ts.tv_nsec / 1000000ull;
+	}
+#endif
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (uint64_t)tv.tv_sec * 1000ull + (uint64_t)tv.tv_usec / 1000ull;
+#endif
+}
 
 static void manual_clear_state(void)
 {
@@ -310,7 +332,7 @@ static void set_pos_task(void *param)
 
 	/* Start a manual transition the first time we move away from 0. */
 	if (!g_manual_active && t > 0.0f) {
-		ULONGLONG now = GetTickCount64();
+		uint64_t now = get_tick64_ms();
 		if (now - g_last_start_tick > 250) {
 			g_last_start_tick = now;
 
@@ -352,7 +374,7 @@ static void set_pos_task(void *param)
 
 	/* Optional release: finish (near 1) or cancel (near 0) and reset state */
 	if (d->release) {
-		ULONGLONG now = GetTickCount64();
+		uint64_t now = get_tick64_ms();
 		if (now - g_last_release_tick < 250) {
 			obs_log(LOG_INFO, "tbar-web: release ignored (debounce)");
 		} else {
